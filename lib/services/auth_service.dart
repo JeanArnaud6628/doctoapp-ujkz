@@ -1,58 +1,83 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/utilisateur_model.dart';
 
 class AuthService {
   final _supabase = Supabase.instance.client;
 
-  // Vérifier si l'INE existe dans la base
-  Future<Map<String, dynamic>?> verifierINE(String ine) async {
+  // Vérifier INE dans la base
+  Future<UtilisateurModel?> verifierINE(String ine) async {
     try {
       final response = await _supabase
           .from('utilisateurs')
-          .select('id, nom, prenom, email, role, actif')
+          .select()
           .eq('ine', ine)
-          .single();
-      return response;
+          .maybeSingle();
+      if (response == null) return null;
+      return UtilisateurModel.fromJson(response);
     } catch (e) {
       return null;
     }
   }
 
-  // Connexion avec INE + mot de passe
-  Future<AuthResponse> connecter(String ine, String motDePasse) async {
-
-    // Recherche l'utilisateur grâce à son INE
-    final data = await _supabase
+  // Connexion — vérifie aussi si compte actif
+  Future<Map<String, dynamic>> connecter(
+      String ine, String motDePasse) async {
+    // 1. Vérifier dans la table utilisateurs
+    final utilisateur = await _supabase
         .from('utilisateurs')
-        .select('email')
+        .select()
         .eq('ine', ine)
-        .single();
+        .maybeSingle();
 
-    final email = data['email'];
+    if (utilisateur == null) {
+      return {'success': false, 'message': 'INE non trouvé.'};
+    }
 
-    // Connexion avec l'email récupéré
-    return await _supabase.auth.signInWithPassword(
-      email: email,
-      password: motDePasse,
-    );
+    if (utilisateur['actif'] == false) {
+      return {
+        'success': false,
+        'message': 'Compte désactivé. Contactez votre École Doctorale.'
+      };
+    }
+
+    // 2. Connexion Supabase Auth
+    final emailAuth =
+        '${ine.toLowerCase().replaceAll(' ', '')}@doctoapp.ujkz';
+    try {
+      final response = await _supabase.auth.signInWithPassword(
+        email: emailAuth,
+        password: motDePasse,
+      );
+      return {
+        'success': true,
+        'role': utilisateur['role'],
+        'user': UtilisateurModel.fromJson(utilisateur),
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Mot de passe incorrect.'};
+    }
   }
 
-  // Créer un compte
-  Future<AuthResponse> creerCompte(String ine, String motDePasse) async {
-    final email = '${ine.toLowerCase()}@doctoapp.ujkz';
-    return await _supabase.auth.signUp(
-      email: email,
+  // Créer compte doctorant (self-service)
+  Future<bool> creerCompteDoctorant(
+      String ine, String motDePasse) async {
+    final emailAuth =
+        '${ine.toLowerCase().replaceAll(' ', '')}@doctoapp.ujkz';
+    await _supabase.auth.signUp(
+      email: emailAuth,
       password: motDePasse,
     );
+    return true;
   }
 
-
-  // Envoyer OTP par email
+  // Envoyer OTP
   Future<void> envoyerOTP(String email) async {
     await _supabase.auth.signInWithOtp(email: email);
   }
 
   // Vérifier OTP
-  Future<AuthResponse> verifierOTP(String email, String token) async {
+  Future<AuthResponse> verifierOTP(
+      String email, String token) async {
     return await _supabase.auth.verifyOTP(
       email: email,
       token: token,
@@ -65,9 +90,24 @@ class AuthService {
     await _supabase.auth.signOut();
   }
 
-  // Utilisateur connecté
-  User? get utilisateurActuel => _supabase.auth.currentUser;
+  // Récupérer rôle utilisateur connecté
+  Future<String?> getRoleUtilisateurConnecte() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return null;
+    try {
+      final response = await _supabase
+          .from('utilisateurs')
+          .select('role, actif')
+          .eq('email', user.email ?? '')
+          .maybeSingle();
+      if (response == null) return null;
+      if (response['actif'] == false) return 'inactif';
+      return response['role'] as String?;
+    } catch (e) {
+      return null;
+    }
+  }
 
-  // Session active
+  User? get utilisateurActuel => _supabase.auth.currentUser;
   Session? get sessionActuelle => _supabase.auth.currentSession;
 }

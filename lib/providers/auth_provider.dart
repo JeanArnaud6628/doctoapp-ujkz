@@ -1,11 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import '../models/utilisateur_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
-// État de l'authentification
 class AuthState {
   final UtilisateurModel? utilisateur;
   final bool isLoading;
@@ -38,29 +36,27 @@ class AuthState {
   }
 }
 
-class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthService _authService;
-  final Ref _ref;
-
-  AuthNotifier(this._authService, this._ref) : super(AuthState());
+class AuthNotifier extends Notifier<AuthState> {
+  @override
+  AuthState build() => AuthState();
 
   // Vérifier INE
   Future<UtilisateurModel?> verifierINE(String ine) async {
     state = state.copyWith(isLoading: true, erreur: null);
     try {
-      final data = await _authService.verifierINE(ine);
-      if (data == null) {
+      final utilisateur =
+      await ref.read(authServiceProvider).verifierINE(ine);
+      if (utilisateur == null) {
         state = state.copyWith(
           isLoading: false,
           erreur: 'INE non trouvé. Contactez votre École Doctorale.',
         );
         return null;
       }
-      final utilisateur = UtilisateurModel.fromJson(data);
       state = state.copyWith(
         isLoading: false,
         ineTemp: ine,
-        emailTemp: data['email'],
+        emailTemp: utilisateur.email,
       );
       return utilisateur;
     } catch (e) {
@@ -73,26 +69,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   // Connexion
-  Future<bool> connecter(String ine, String motDePasse) async {
+  Future<Map<String, dynamic>> connecter(
+      String ine, String motDePasse) async {
     state = state.copyWith(isLoading: true, erreur: null);
     try {
-      await _authService.connecter(ine, motDePasse);
+      final result = await ref
+          .read(authServiceProvider)
+          .connecter(ine, motDePasse);
       state = state.copyWith(isLoading: false);
-      return true;
+      return result;
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        erreur: 'INE ou mot de passe incorrect.',
+        erreur: 'Erreur de connexion.',
       );
-      return false;
+      return {'success': false, 'message': 'Erreur de connexion.'};
     }
   }
 
-  // Créer compte
-  Future<bool> creerCompte(String ine, String motDePasse) async {
+  // Créer compte doctorant
+  Future<bool> creerCompteDoctorant(
+      String ine, String motDePasse) async {
     state = state.copyWith(isLoading: true, erreur: null);
     try {
-      await _authService.creerCompte(ine, motDePasse);
+      await ref
+          .read(authServiceProvider)
+          .creerCompteDoctorant(ine, motDePasse);
       state = state.copyWith(isLoading: false);
       return true;
     } catch (e) {
@@ -106,12 +108,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   // Déconnexion
   Future<void> deconnecter() async {
-    await _authService.deconnecter();
+    await ref.read(authServiceProvider).deconnecter();
     state = AuthState();
   }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  final authService = ref.watch(authServiceProvider);
-  return AuthNotifier(authService, ref);
-});
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);

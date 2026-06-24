@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import '../../screens/splash/splash_screen.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/create_account_screen.dart';
+// Doctorant
 import '../../screens/doctorant/dashboard_doctorant_screen.dart';
 import '../../screens/doctorant/these/these_screen.dart';
 import '../../screens/doctorant/these/enregistrer_these_screen.dart';
@@ -23,6 +24,11 @@ import '../../screens/admin/gestion_soutenances_screen.dart';
 import '../../screens/admin/gestion_manuscrits_screen.dart';
 import '../../screens/admin/notifications_admin_screen.dart';
 import '../../screens/admin/profil_admin_screen.dart';
+import '../../screens/admin/envoyer_notification_screen.dart';
+import '../../screens/admin/profil_doctorant_admin_screen.dart';
+import '../../screens/admin/rapporteurs_matching_screen.dart';
+// Placeholder screens
+import '../../screens/placeholder_screen.dart';
 
 class AppRoutes {
   // Auth
@@ -43,6 +49,7 @@ class AppRoutes {
   static const String dashboardAdmin = '/admin/dashboard';
   static const String gestionDoctorants = '/admin/doctorants';
   static const String ajouterDoctorant = '/admin/doctorants/ajouter';
+  static const String profilDoctorantAdmin = '/admin/doctorants/profil';
   static const String gestionDirecteurs = '/admin/directeurs';
   static const String ajouterDirecteur = '/admin/directeurs/ajouter';
   static const String gestionRapporteurs = '/admin/rapporteurs';
@@ -53,7 +60,13 @@ class AppRoutes {
   static const String gestionSoutenances = '/admin/soutenances';
   static const String gestionManuscrits = '/admin/manuscrits';
   static const String notificationsAdmin = '/admin/notifications';
+  static const String envoyerNotification = '/admin/notifications/envoyer';
   static const String profilAdmin = '/admin/profil';
+  static const String rapporteursMatching = '/admin/rapporteurs/matching';
+  // Autres rôles (placeholders)
+  static const String dashboardDirecteur = '/directeur/dashboard';
+  static const String dashboardCSI = '/csi/dashboard';
+  static const String dashboardRapporteur = '/rapporteur/dashboard';
 
   static final router = GoRouter(
     initialLocation: splash,
@@ -61,6 +74,7 @@ class AppRoutes {
       GoRoute(path: splash, builder: (c, s) => const SplashScreen()),
       GoRoute(path: login, builder: (c, s) => const LoginScreen()),
       GoRoute(path: createAccount, builder: (c, s) => const CreateAccountScreen()),
+      // Doctorant
       GoRoute(path: dashboard, builder: (c, s) => const DashboardDoctorantScreen()),
       GoRoute(path: these, builder: (c, s) => const TheseScreen()),
       GoRoute(path: enregistrerThese, builder: (c, s) => const EnregistrerTheseScreen()),
@@ -70,12 +84,17 @@ class AppRoutes {
       GoRoute(path: notifications, builder: (c, s) => const NotificationsScreen()),
       GoRoute(path: opportunites, builder: (c, s) => const OpportunitesScreen()),
       GoRoute(path: profil, builder: (c, s) => const ProfilScreen()),
-      // Admin routes
+      // Admin
       GoRoute(path: dashboardAdmin, builder: (c, s) => const DashboardAdminScreen()),
       GoRoute(path: gestionDoctorants, builder: (c, s) => const GestionDoctorantsScreen()),
       GoRoute(
         path: ajouterDoctorant,
         builder: (c, s) => const AjouterUtilisateurScreen(role: 'doctorant'),
+      ),
+      GoRoute(
+        path: '$profilDoctorantAdmin/:id',
+        builder: (c, s) => ProfilDoctorantAdminScreen(
+            doctorantId: s.pathParameters['id']!),
       ),
       GoRoute(path: gestionDirecteurs, builder: (c, s) => const GestionDirecteursScreen()),
       GoRoute(
@@ -96,7 +115,26 @@ class AppRoutes {
       GoRoute(path: gestionSoutenances, builder: (c, s) => const GestionSoutenancesScreen()),
       GoRoute(path: gestionManuscrits, builder: (c, s) => const GestionManuscritsScreen()),
       GoRoute(path: notificationsAdmin, builder: (c, s) => const NotificationsAdminScreen()),
+      GoRoute(path: envoyerNotification, builder: (c, s) => const EnvoyerNotificationScreen()),
       GoRoute(path: profilAdmin, builder: (c, s) => const ProfilAdminScreen()),
+      GoRoute(
+        path: '$rapporteursMatching/:theseId',
+        builder: (c, s) => RapporteursMatchingScreen(
+            theseId: s.pathParameters['theseId']!),
+      ),
+      // Placeholders autres rôles
+      GoRoute(
+        path: dashboardDirecteur,
+        builder: (c, s) => const PlaceholderScreen(titre: 'Directeur de Thèse'),
+      ),
+      GoRoute(
+        path: dashboardCSI,
+        builder: (c, s) => const PlaceholderScreen(titre: 'Membre CSI'),
+      ),
+      GoRoute(
+        path: dashboardRapporteur,
+        builder: (c, s) => const PlaceholderScreen(titre: 'Rapporteur'),
+      ),
     ],
   );
 }

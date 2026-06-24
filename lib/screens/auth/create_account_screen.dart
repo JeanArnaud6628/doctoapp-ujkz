@@ -752,7 +752,7 @@ class _PasswordStepState extends ConsumerState<_PasswordStep> {
             }
             final succes = await ref
                 .read(authProvider.notifier)
-                .creerCompte(widget.ine, _mdpController.text);
+                .creerCompteDoctorant(widget.ine, _mdpController.text);
             if (succes && mounted) widget.onSuccess();
           },
         ),
