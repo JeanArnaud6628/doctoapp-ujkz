@@ -41,8 +41,8 @@ class AuthService {
     }
 
     // 2. Connexion Supabase Auth
-    final emailAuth =
-        '${ine.toLowerCase().replaceAll(' ', '')}@doctoapp.ujkz';
+    final emailAuth = utilisateur['email'] as String; // ← admin@gmail.com
+
     try {
       final response = await _supabase.auth.signInWithPassword(
         email: emailAuth,

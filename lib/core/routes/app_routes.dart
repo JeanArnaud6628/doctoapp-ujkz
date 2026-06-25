@@ -46,6 +46,7 @@ class AppRoutes {
   static const String opportunites = '/opportunites';
   static const String profil = '/profil';
   // Admin
+  static const String gestionRapports = '/admin/rapports';
   static const String dashboardAdmin = '/admin/dashboard';
   static const String gestionDoctorants = '/admin/doctorants';
   static const String ajouterDoctorant = '/admin/doctorants/ajouter';
@@ -85,6 +86,8 @@ class AppRoutes {
       GoRoute(path: opportunites, builder: (c, s) => const OpportunitesScreen()),
       GoRoute(path: profil, builder: (c, s) => const ProfilScreen()),
       // Admin
+
+
       GoRoute(path: dashboardAdmin, builder: (c, s) => const DashboardAdminScreen()),
       GoRoute(path: gestionDoctorants, builder: (c, s) => const GestionDoctorantsScreen()),
       GoRoute(

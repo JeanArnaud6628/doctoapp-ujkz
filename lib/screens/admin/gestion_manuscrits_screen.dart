@@ -42,8 +42,7 @@ class GestionManuscritsScreen extends ConsumerWidget {
             return _buildManuscritCard(context, ref, m);
           },
         ),
-        loading: () =>
-        const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Erreur: $e')),
       ),
     );
@@ -131,9 +130,10 @@ class GestionManuscritsScreen extends ConsumerWidget {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () async {
+                    // 🔧 CORRECTION ICI : utilisation de validerManuscritSimple
                     await ref
                         .read(adminServiceProvider)
-                        .validerManuscrit(m['id']);
+                        .validerManuscritSimple(m['id']);
                     ref.invalidate(manuscritsEnAttenteProvider);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
