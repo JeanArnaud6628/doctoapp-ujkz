@@ -5,6 +5,8 @@ class NotificationModel {
   final bool lu;
   final String utilisateurId;
   final String createdAt;
+  final String? type;
+  final String? dateEnvoi;
 
   NotificationModel({
     required this.id,
@@ -13,6 +15,8 @@ class NotificationModel {
     this.lu = false,
     required this.utilisateurId,
     required this.createdAt,
+    this.type,
+    this.dateEnvoi,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,20 @@ class NotificationModel {
       lu: json['lu'] ?? false,
       utilisateurId: json['utilisateur_id'] ?? '',
       createdAt: json['created_at'] ?? '',
+      type: json['type'],
+      dateEnvoi: json['date_envoi'],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'titre': titre,
+    'message': message,
+    'lu': lu,
+    'utilisateur_id': utilisateurId,
+    'type': type,
+    'date_envoi': dateEnvoi,
+  };
+
+  bool get estNonLue => !lu;
 }
+

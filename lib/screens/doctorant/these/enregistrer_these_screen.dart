@@ -6,7 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../providers/these_provider.dart';
-import '../../../services/these_service.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../models/utilisateur_model.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_textfield.dart';
 
@@ -30,6 +31,9 @@ class _EnregistrerTheseScreenState
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final user = authState.utilisateur;
+
     return Scaffold(
       body: Column(
         children: [
@@ -49,7 +53,7 @@ class _EnregistrerTheseScreenState
                 child: _etape == 1
                     ? _buildEtape1()
                     : _etape == 2
-                    ? _buildEtape2()
+                    ? _buildEtape2(user)
                     : _buildEtape3(),
               ),
             ),
@@ -67,8 +71,7 @@ class _EnregistrerTheseScreenState
     ];
     return Container(
       color: AppTheme.primaryColor,
-      padding: const EdgeInsets.only(
-          top: 50, bottom: 36, left: 16, right: 16),
+      padding: const EdgeInsets.only(top: 50, bottom: 36, left: 16, right: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -85,8 +88,7 @@ class _EnregistrerTheseScreenState
                 Icon(Icons.arrow_back, color: Colors.white70, size: 18),
                 SizedBox(width: 6),
                 Text('Retour',
-                    style:
-                    TextStyle(color: Colors.white70, fontSize: 12)),
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),
           ),
@@ -98,8 +100,7 @@ class _EnregistrerTheseScreenState
                   fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
           Text(titles[_etape - 1],
-              style: const TextStyle(
-                  color: Colors.white70, fontSize: 12)),
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
           const SizedBox(height: 14),
           Row(
             children: List.generate(3, (index) {
@@ -121,6 +122,10 @@ class _EnregistrerTheseScreenState
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ÉTAPE 1 : INFORMATIONS
+  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildEtape1() {
     return Column(
@@ -178,7 +183,11 @@ class _EnregistrerTheseScreenState
     );
   }
 
-  Widget _buildEtape2() {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ÉTAPE 2 : CHOIX DU DIRECTEUR (AVEC FILTRE PAR ÉCOLE)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildEtape2(UtilisateurModel? user) {
     final directeursAsync = ref.watch(directeursProvider);
 
     return Column(
@@ -190,86 +199,140 @@ class _EnregistrerTheseScreenState
                 fontWeight: FontWeight.w500,
                 color: AppTheme.textDark)),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'Sélectionnez votre directeur dans l\'annuaire UJKZ',
-          style: TextStyle(fontSize: 12, color: AppTheme.textGray),
+          style: const TextStyle(fontSize: 12, color: AppTheme.textGray),
         ),
         const SizedBox(height: 20),
         directeursAsync.when(
-          data: (directeurs) => directeurs.isEmpty
-              ? Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFBF0),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: const Color(0xFFFFE0A0)),
-            ),
-            child: const Text(
-              'Aucun directeur disponible pour l\'instant. Contactez l\'administration.',
-              style: TextStyle(fontSize: 12),
-            ),
-          )
-              : Column(
-            children: directeurs.map((d) {
-              final id = d['id'] as String;
-              final nom = '${d['prenom']} ${d['nom']}';
-              final selected = _directeurSelectionne == id;
-              return GestureDetector(
-                onTap: () =>
-                    setState(() => _directeurSelectionne = id),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xFFF0FBF0)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: selected
-                          ? AppTheme.primaryColor
-                          : const Color(0xFFE0E0E0),
-                      width: selected ? 1.5 : 0.5,
+          data: (directeurs) {
+            // ✅ FILTRER PAR ÉCOLE DOCTORALE
+            final ecoleDoctorale = user?.ecoleDoctorale;
+            final filtered = ecoleDoctorale != null
+                ? directeurs.where((d) {
+              final dEcole = d['ecole_doctorale'] as String? ?? '';
+              return dEcole == ecoleDoctorale;
+            }).toList()
+                : directeurs;
+
+            if (filtered.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBF0),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFE0A0)),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.warning_amber_outlined,
+                        color: AppTheme.orangeColor, size: 32),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Aucun directeur disponible pour votre école doctorale.',
+                      style: TextStyle(fontSize: 13),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: selected
-                            ? AppTheme.primaryColor
-                            : const Color(0xFFE0E0E0),
-                        child: Text(
-                          nom.isNotEmpty
-                              ? nom[0].toUpperCase()
-                              : 'D',
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : Colors.black54,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Contactez l\'administration pour ajouter un directeur.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textGray,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(nom,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight:
-                                FontWeight.w500)),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        // TODO: Demander un directeur externe
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
                       ),
-                      if (selected)
-                        const Icon(Icons.check_circle,
-                            color: AppTheme.primaryColor,
-                            size: 20),
-                    ],
-                  ),
+                      child: const Text(
+                        'Proposer un directeur externe',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
               );
-            }).toList(),
-          ),
-          loading: () => const CircularProgressIndicator(),
+            }
+
+            return Column(
+              children: filtered.map((d) {
+                final id = d['id'] as String;
+                final nom = '${d['prenom']} ${d['nom']}';
+                final grade = d['grade'] as String? ?? '';
+                final specialite = d['specialite'] as String? ?? '';
+                final selected = _directeurSelectionne == id;
+
+                return GestureDetector(
+                  onTap: () => setState(() => _directeurSelectionne = id),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? const Color(0xFFF0FBF0)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: selected
+                            ? AppTheme.primaryColor
+                            : const Color(0xFFE0E0E0),
+                        width: selected ? 1.5 : 0.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: selected
+                              ? AppTheme.primaryColor
+                              : const Color(0xFFE0E0E0),
+                          child: Text(
+                            nom.isNotEmpty ? nom[0].toUpperCase() : 'D',
+                            style: TextStyle(
+                              color: selected ? Colors.white : Colors.black54,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                nom,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (grade.isNotEmpty || specialite.isNotEmpty)
+                                Text(
+                                  '${grade.isNotEmpty ? grade : ''}${grade.isNotEmpty && specialite.isNotEmpty ? ' • ' : ''}${specialite.isNotEmpty ? specialite : ''}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.textGray,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (selected)
+                          const Icon(Icons.check_circle,
+                              color: AppTheme.primaryColor, size: 20),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Text('Erreur: $e'),
         ),
         const SizedBox(height: 24),
@@ -291,7 +354,9 @@ class _EnregistrerTheseScreenState
               flex: 2,
               child: CustomButton(
                 text: 'Suivant →',
-                onPressed: () => setState(() => _etape = 3),
+                onPressed: _directeurSelectionne == null
+                    ? null
+                    : () => setState(() => _etape = 3),
               ),
             ),
           ],
@@ -299,6 +364,10 @@ class _EnregistrerTheseScreenState
       ],
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ÉTAPE 3 : CONFIRMATION
+  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildEtape3() {
     return Column(
@@ -327,9 +396,7 @@ class _EnregistrerTheseScreenState
                 : _motsClesController.text),
         _buildConfirmItem(
             'Directeur',
-            _directeurSelectionne != null
-                ? 'Sélectionné'
-                : 'Non sélectionné'),
+            _directeurSelectionne != null ? 'Sélectionné' : 'Non sélectionné'),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(12),
@@ -345,8 +412,7 @@ class _EnregistrerTheseScreenState
               Expanded(
                 child: Text(
                   'Ces informations seront utilisées pour désigner vos rapporteurs lors du dépôt du manuscrit final.',
-                  style:
-                  TextStyle(fontSize: 11, color: Color(0xFF0D47A1)),
+                  style: TextStyle(fontSize: 11, color: Color(0xFF0D47A1)),
                 ),
               ),
             ],
@@ -422,6 +488,10 @@ class _EnregistrerTheseScreenState
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ENREGISTREMENT
+  // ═══════════════════════════════════════════════════════════════════════════
+
   Future<void> _enregistrer() async {
     setState(() => _isLoading = true);
     try {
@@ -442,7 +512,7 @@ class _EnregistrerTheseScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Projet enregistré avec succès !'),
+            content: Text('✅ Projet enregistré avec succès !'),
             backgroundColor: AppTheme.primaryColor,
           ),
         );

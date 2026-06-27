@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_routes.dart';
+import 'screens/splash/splash_screen.dart';
 
 class DoctoApp extends ConsumerWidget {
   const DoctoApp({super.key});
@@ -12,9 +13,9 @@ class DoctoApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'DoctoApp UJKZ',
-      debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: AppRoutes.router,
+      debugShowCheckedModeBanner: false,
     );
   }
 }

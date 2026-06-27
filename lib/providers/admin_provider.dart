@@ -104,3 +104,27 @@ final demandesDirecteurExterneProvider = FutureProvider<List<Map<String, dynamic
 final rechercheUtilisateurProvider = FutureProvider.family<List<UtilisateurModel>, Map<String, String>>((ref, params) async {
   return ref.read(adminServiceProvider).rechercherUtilisateurs(params['query'] ?? '', params['role'] ?? '');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GESTION DES DOCTORANTS — NOUVEAUX PROVIDERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── STATISTIQUES DOCTORANTS ──
+final statsDoctorantsProvider = FutureProvider<Map<String, int>>((ref) async {
+  return ref.read(adminServiceProvider).getStatsDoctorants();
+});
+
+// ── LISTE DES DOCTORANTS EN ATTENTE ──
+final doctorantsEnAttenteProvider = FutureProvider<List<UtilisateurModel>>((ref) async {
+  return ref.read(adminServiceProvider).getDoctorantsEnAttente();
+});
+
+// ── LISTE DES DOCTORANTS ACTIFS ──
+final doctorantsActifsProvider = FutureProvider<List<UtilisateurModel>>((ref) async {
+  return ref.read(adminServiceProvider).getDoctorantsActifs();
+});
+
+// ── LISTE DES DOCTORANTS BLOQUÉS ──
+final doctorantsBloquesProvider = FutureProvider<List<UtilisateurModel>>((ref) async {
+  return ref.read(adminServiceProvider).getDoctorantsBloques();
+});

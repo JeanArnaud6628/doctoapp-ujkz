@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class UtilisateurModel {
   final String id;
   final String nom;
@@ -11,6 +13,24 @@ class UtilisateurModel {
   final String? ecoleDoctorale;
   final String createdAt;
 
+  // ─── NOUVEAUX CHAMPS POUR LA GESTION DES COMPTES ───
+  final String? statutCompte; // 'en_attente_activation' | 'actif' | 'inactif' | 'supprime'
+  final String? dateActivation;
+  final String? motifDesactivation;
+  final String? dateDesactivation;
+  final String? dateReactivation;
+  final String? dateSuppression;
+
+  // ─── NOUVEAUX CHAMPS POUR LE DOSSIER DOCTORANT ───
+  final String? sexe;
+  final String? dateNaissance;
+  final String? formationDoctorale;
+  final String? departement;
+  final String? laboratoire;
+  final String? promotion;
+  final int? anneeInscription;
+  final String? sujetProvisoire;
+
   UtilisateurModel({
     required this.id,
     required this.nom,
@@ -23,6 +43,21 @@ class UtilisateurModel {
     this.actif = true,
     this.ecoleDoctorale,
     this.createdAt = '',
+    // Nouveaux champs
+    this.statutCompte,
+    this.dateActivation,
+    this.motifDesactivation,
+    this.dateDesactivation,
+    this.dateReactivation,
+    this.dateSuppression,
+    this.sexe,
+    this.dateNaissance,
+    this.formationDoctorale,
+    this.departement,
+    this.laboratoire,
+    this.promotion,
+    this.anneeInscription,
+    this.sujetProvisoire,
   });
 
   factory UtilisateurModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +73,21 @@ class UtilisateurModel {
       actif: json['actif'] ?? true,
       ecoleDoctorale: json['ecole_doctorale'],
       createdAt: json['created_at'] ?? '',
+      // Nouveaux champs
+      statutCompte: json['statut_compte'] ?? 'actif',
+      dateActivation: json['date_activation'],
+      motifDesactivation: json['motif_desactivation'],
+      dateDesactivation: json['date_desactivation'],
+      dateReactivation: json['date_reactivation'],
+      dateSuppression: json['date_suppression'],
+      sexe: json['sexe'],
+      dateNaissance: json['date_naissance'],
+      formationDoctorale: json['formation_doctorale'],
+      departement: json['departement'],
+      laboratoire: json['laboratoire'],
+      promotion: json['promotion'],
+      anneeInscription: json['annee_inscription'],
+      sujetProvisoire: json['sujet_provisoire'],
     );
   }
 
@@ -50,7 +100,24 @@ class UtilisateurModel {
     'telephone': telephone,
     'actif': actif,
     'ecole_doctorale': ecoleDoctorale,
+    // Nouveaux champs
+    'statut_compte': statutCompte,
+    'date_activation': dateActivation,
+    'motif_desactivation': motifDesactivation,
+    'date_desactivation': dateDesactivation,
+    'date_reactivation': dateReactivation,
+    'date_suppression': dateSuppression,
+    'sexe': sexe,
+    'date_naissance': dateNaissance,
+    'formation_doctorale': formationDoctorale,
+    'departement': departement,
+    'laboratoire': laboratoire,
+    'promotion': promotion,
+    'annee_inscription': anneeInscription,
+    'sujet_provisoire': sujetProvisoire,
   };
+
+  // ─── GETTERS UTILES ───
 
   String get nomComplet => '$prenom $nom';
 
@@ -75,4 +142,31 @@ class UtilisateurModel {
       default: return role;
     }
   }
+
+  // ─── GETTERS POUR LE STATUT ───
+
+  String get statutLibelle {
+    switch (statutCompte) {
+      case 'en_attente_activation': return 'En attente d\'activation';
+      case 'actif': return 'Actif';
+      case 'inactif': return 'Inactif';
+      case 'supprime': return 'Supprimé';
+      default: return 'Inconnu';
+    }
+  }
+
+  // ✅ CORRIGÉ : couleurs valides avec le bon format
+  Color get statutCouleur {
+    switch (statutCompte) {
+      case 'en_attente_activation': return const Color(0xFFFF9800); // Orange
+      case 'actif': return const Color(0xFF4CAF50); // Vert
+      case 'inactif': return const Color(0xFFF44336); // Rouge
+      case 'supprime': return const Color(0xFF9E9E9E); // Gris
+      default: return const Color(0xFF9E9E9E); // Gris
+    }
+  }
+
+  bool get estEnAttente => statutCompte == 'en_attente_activation';
+  bool get estActif => statutCompte == 'actif' && actif == true;
+  bool get estInactif => statutCompte == 'inactif' || actif == false;
 }

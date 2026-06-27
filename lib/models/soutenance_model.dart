@@ -6,6 +6,9 @@ class SoutenanceModel {
   final String lieu;
   final String presidentJury;
   final String createdAt;
+  final String? statut;
+  final String? resultat;
+  final String? mention;
 
   SoutenanceModel({
     required this.id,
@@ -15,6 +18,9 @@ class SoutenanceModel {
     required this.lieu,
     required this.presidentJury,
     required this.createdAt,
+    this.statut,
+    this.resultat,
+    this.mention,
   });
 
   factory SoutenanceModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +32,9 @@ class SoutenanceModel {
       lieu: json['lieu'] ?? '',
       presidentJury: json['president_jury'] ?? '',
       createdAt: json['created_at'] ?? '',
+      statut: json['statut'] ?? 'programmee',
+      resultat: json['resultat'],
+      mention: json['mention'],
     );
   }
 
@@ -35,5 +44,25 @@ class SoutenanceModel {
     'heure': heure,
     'lieu': lieu,
     'president_jury': presidentJury,
+    'statut': statut,
+    'resultat': resultat,
+    'mention': mention,
   };
+
+  String get statutLibelle {
+    switch (statut) {
+      case 'programmee': return 'Programmée';
+      case 'realisee': return 'Réalisée';
+      case 'annulee': return 'Annulée';
+      default: return 'Inconnu';
+    }
+  }
+
+  String get resultatLibelle {
+    switch (resultat) {
+      case 'admis': return 'Admis ✅';
+      case 'ajourne': return 'Ajourné ❌';
+      default: return 'En attente';
+    }
+  }
 }

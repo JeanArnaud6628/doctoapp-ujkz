@@ -9,7 +9,7 @@ import '../../providers/admin_provider.dart';
 import '../../services/admin_service.dart';
 import 'vues/vue_generale.dart';
 import 'vues/vue_cycle_doctoral.dart';
-import 'vues/vue_gestion.dart';
+import 'vues/vue_gestion.dart'; // ✅ AJOUTER CET IMPORT
 import 'vues/vue_alertes_historique.dart';
 
 class DashboardAdminScreen extends ConsumerStatefulWidget {
@@ -53,17 +53,15 @@ class _DashboardAdminScreenState
       backgroundColor: const Color(0xFFF2F5F2),
       body: Column(
         children: [
-          // Header principal
           _buildHeader(context, statsAsync, nbAlertes),
-          // Corps avec onglets
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [
-                VueGenerale(),
-                VueCycleDoctoral(),
+              children: [
+                const VueGenerale(),
+                const VueCycleDoctoral(),
                 VueGestion(),
-                VueAlertesHistorique(),
+                const VueAlertesHistorique(),
               ],
             ),
           ),
@@ -72,6 +70,8 @@ class _DashboardAdminScreenState
       bottomNavigationBar: _buildBottomNav(nbAlertes),
     );
   }
+
+  // ─── HEADER ──────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context,
       AsyncValue<Map<String, int>> statsAsync, int nbAlertes) {

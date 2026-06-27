@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../providers/admin_provider.dart';
+import '../../../models/utilisateur_model.dart';
 
 class VueGestion extends ConsumerWidget {
   const VueGestion({super.key});
@@ -14,11 +15,51 @@ class VueGestion extends ConsumerWidget {
     final directeursAsync = ref.watch(directeursAvecStats);
     final csiAsync = ref.watch(csiAvecStats);
     final rapporteursAsync = ref.watch(rapporteursAvecStats);
+    final doctorantsAsync = ref.watch(doctorantsProvider);
 
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
-        // Directeurs
+        // ─── DOCTORANTS ──────────────────────────────────────────────────
+        _SectionGestion(
+          titre: 'DOCTORANTS',
+          couleur: AppTheme.primaryColor,
+          icone: Icons.school_rounded,
+          routeAjouter: AppRoutes.ajouterDoctorant,
+          routeVoirTout: AppRoutes.gestionDoctorants,
+          contenu: doctorantsAsync.when(
+            data: (doctorants) {
+              final recent = doctorants.take(3).toList();
+              if (recent.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Aucun doctorant'),
+                  ),
+                );
+              }
+              return Column(
+                children: recent.map((d) {
+                  return _CarteUtilisateur(
+                    nom: d.nomComplet,
+                    info1: 'INE: ${d.ine ?? 'Non défini'}',
+                    info2: d.ecoleDoctorale ?? '–',
+                    actif: d.actif,
+                    couleur: AppTheme.primaryColor,
+                    onTap: () => context.push(
+                      '${AppRoutes.profilDoctorantAdmin}/${d.id}',
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, __) => const SizedBox(),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // ─── DIRECTEURS ──────────────────────────────────────────────────
         _SectionGestion(
           titre: 'DIRECTEURS DE THÈSE',
           couleur: const Color(0xFF0D47A1),
@@ -26,24 +67,36 @@ class VueGestion extends ConsumerWidget {
           routeAjouter: AppRoutes.ajouterDirecteur,
           routeVoirTout: AppRoutes.gestionDirecteurs,
           contenu: directeursAsync.when(
-            data: (dirs) => Column(
-              children: dirs.take(3).map((d) {
-                return _CarteUtilisateur(
-                  nom: '${d['prenom'] ?? ''} ${d['nom'] ?? ''}',
-                  info1: '${d['nb_doctorants'] ?? 0} doctorant(s)',
-                  info2: d['ecole_doctorale'] as String? ?? '–',
-                  actif: d['actif'] as bool? ?? true,
-                  couleur: const Color(0xFF0D47A1),
-                  onTap: () {},
+            data: (dirs) {
+              final recent = dirs.take(3).toList();
+              if (recent.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Aucun directeur'),
+                  ),
                 );
-              }).toList(),
-            ),
+              }
+              return Column(
+                children: recent.map((d) {
+                  return _CarteUtilisateur(
+                    nom: '${d['prenom'] ?? ''} ${d['nom'] ?? ''}',
+                    info1: '${d['nb_doctorants'] ?? 0} doctorant(s)',
+                    info2: d['ecole_doctorale'] as String? ?? '–',
+                    actif: d['actif'] as bool? ?? true,
+                    couleur: const Color(0xFF0D47A1),
+                    onTap: () {},
+                  );
+                }).toList(),
+              );
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Erreur: $e'),
+            error: (_, __) => const SizedBox(),
           ),
         ),
         const SizedBox(height: 14),
-        // CSI
+
+        // ─── CSI ─────────────────────────────────────────────────────────
         _SectionGestion(
           titre: 'MEMBRES CSI',
           couleur: const Color(0xFF00695C),
@@ -51,24 +104,36 @@ class VueGestion extends ConsumerWidget {
           routeAjouter: AppRoutes.ajouterCSI,
           routeVoirTout: AppRoutes.gestionCSI,
           contenu: csiAsync.when(
-            data: (csiList) => Column(
-              children: csiList.take(3).map((c) {
-                return _CarteUtilisateur(
-                  nom: '${c['prenom'] ?? ''} ${c['nom'] ?? ''}',
-                  info1: '${c['nb_doctorants'] ?? 0} doctorant(s) suivis',
-                  info2: c['ecole_doctorale'] as String? ?? '–',
-                  actif: c['actif'] as bool? ?? true,
-                  couleur: const Color(0xFF00695C),
-                  onTap: () {},
+            data: (csiList) {
+              final recent = csiList.take(3).toList();
+              if (recent.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Aucun membre CSI'),
+                  ),
                 );
-              }).toList(),
-            ),
+              }
+              return Column(
+                children: recent.map((c) {
+                  return _CarteUtilisateur(
+                    nom: '${c['prenom'] ?? ''} ${c['nom'] ?? ''}',
+                    info1: '${c['nb_doctorants'] ?? 0} doctorant(s) suivis',
+                    info2: c['ecole_doctorale'] as String? ?? '–',
+                    actif: c['actif'] as bool? ?? true,
+                    couleur: const Color(0xFF00695C),
+                    onTap: () {},
+                  );
+                }).toList(),
+              );
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Erreur: $e'),
+            error: (_, __) => const SizedBox(),
           ),
         ),
         const SizedBox(height: 14),
-        // Rapporteurs
+
+        // ─── RAPPORTEURS ─────────────────────────────────────────────────
         _SectionGestion(
           titre: 'RAPPORTEURS',
           couleur: const Color(0xFF6A1B9A),
@@ -76,22 +141,33 @@ class VueGestion extends ConsumerWidget {
           routeAjouter: AppRoutes.ajouterRapporteur,
           routeVoirTout: AppRoutes.gestionRapporteurs,
           contenu: rapporteursAsync.when(
-            data: (raps) => Column(
-              children: raps.take(3).map((r) {
-                final libre = r['est_libre'] as bool? ?? true;
-                return _CarteUtilisateur(
-                  nom: '${r['prenom'] ?? ''} ${r['nom'] ?? ''}',
-                  info1: '${r['nb_en_cours'] ?? 0} en cours · ${r['nb_termines'] ?? 0} terminés',
-                  info2: r['domaines_expertise'] as String? ?? r['specialite'] as String? ?? '–',
-                  actif: r['actif'] as bool? ?? true,
-                  couleur: const Color(0xFF6A1B9A),
-                  badgeLibre: libre,
-                  onTap: () {},
+            data: (raps) {
+              final recent = raps.take(3).toList();
+              if (recent.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Aucun rapporteur'),
+                  ),
                 );
-              }).toList(),
-            ),
+              }
+              return Column(
+                children: recent.map((r) {
+                  final libre = r['est_libre'] as bool? ?? true;
+                  return _CarteUtilisateur(
+                    nom: '${r['prenom'] ?? ''} ${r['nom'] ?? ''}',
+                    info1: '${r['nb_en_cours'] ?? 0} en cours · ${r['nb_termines'] ?? 0} terminés',
+                    info2: r['domaines_expertise'] as String? ?? r['specialite'] as String? ?? '–',
+                    actif: r['actif'] as bool? ?? true,
+                    couleur: const Color(0xFF6A1B9A),
+                    badgeLibre: libre,
+                    onTap: () {},
+                  );
+                }).toList(),
+              );
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Erreur: $e'),
+            error: (_, __) => const SizedBox(),
           ),
         ),
         const SizedBox(height: 80),
@@ -99,6 +175,10 @@ class VueGestion extends ConsumerWidget {
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECTION GESTION
+// ═══════════════════════════════════════════════════════════════════════════
 
 class _SectionGestion extends StatelessWidget {
   final String titre;
@@ -125,9 +205,10 @@ class _SectionGestion extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: couleur.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
+            color: couleur.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -147,17 +228,22 @@ class _SectionGestion extends StatelessWidget {
                   child: Icon(icone, color: couleur, size: 16),
                 ),
                 const SizedBox(width: 8),
-                Text(titre,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: couleur,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5)),
+                Text(
+                  titre,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: couleur,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
                 const Spacer(),
                 TextButton(
                   onPressed: () => context.push(routeVoirTout),
-                  child: const Text('Voir tout',
-                      style: TextStyle(fontSize: 11, color: AppTheme.primaryColor)),
+                  child: const Text(
+                    'Voir tout',
+                    style: TextStyle(fontSize: 11, color: AppTheme.primaryColor),
+                  ),
                 ),
                 GestureDetector(
                   onTap: () => context.push(routeAjouter),
@@ -184,6 +270,10 @@ class _SectionGestion extends StatelessWidget {
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CARTE UTILISATEUR
+// ═══════════════════════════════════════════════════════════════════════════
 
 class _CarteUtilisateur extends StatelessWidget {
   final String nom;
@@ -215,7 +305,9 @@ class _CarteUtilisateur extends StatelessWidget {
           color: const Color(0xFFF8FBF8),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-              color: const Color(0xFFE8EEE8), width: 0.5),
+            color: const Color(0xFFE8EEE8),
+            width: 0.5,
+          ),
         ),
         child: Row(
           children: [
@@ -225,7 +317,9 @@ class _CarteUtilisateur extends StatelessWidget {
               child: Text(
                 nom.isNotEmpty ? nom[0].toUpperCase() : 'U',
                 style: TextStyle(
-                    color: couleur, fontWeight: FontWeight.bold),
+                  color: couleur,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -233,19 +327,31 @@ class _CarteUtilisateur extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(nom,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  Text(info1,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppTheme.textGray)),
-                  Text(info2,
-                      style: TextStyle(
-                          fontSize: 9, color: couleur.withOpacity(0.7)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    nom,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    info1,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textGray,
+                    ),
+                  ),
+                  Text(
+                    info2,
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: couleur.withOpacity(0.7),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -254,7 +360,9 @@ class _CarteUtilisateur extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 2),
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: actif
                         ? const Color(0xFFE8F5E9)
@@ -264,22 +372,29 @@ class _CarteUtilisateur extends StatelessWidget {
                   child: Text(
                     actif ? 'Actif' : 'Inactif',
                     style: TextStyle(
-                        fontSize: 9,
-                        color: actif ? AppTheme.primaryColor : Colors.red),
+                      fontSize: 9,
+                      color: actif ? AppTheme.primaryColor : Colors.red,
+                    ),
                   ),
                 ),
                 if (badgeLibre) ...[
                   const SizedBox(height: 3),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE3F2FD),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text('Libre',
-                        style: TextStyle(
-                            fontSize: 9, color: Color(0xFF0D47A1))),
+                    child: const Text(
+                      'Libre',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Color(0xFF0D47A1),
+                      ),
+                    ),
                   ),
                 ],
               ],

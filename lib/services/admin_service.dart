@@ -64,6 +64,7 @@ class AdminService {
     }
   }
 
+
   // ── MÉTHODE UNIQUE pour mise à jour étape ─────────────────────────────────
   // Met à jour etape_actuelle + enregistre dans historique
   Future<void> updateEtapeThese(String theseId, String etape) async {
@@ -124,6 +125,7 @@ class AdminService {
     }
   }
 
+  // ── CRÉER UN COMPTE (Directeur, CSI, Rapporteur) ──
   Future<UtilisateurModel> creerUtilisateur({
     required String nom,
     required String prenom,
@@ -139,6 +141,8 @@ class AdminService {
     final emailAuth = ine != null
         ? '${ine.toLowerCase().replaceAll(' ', '')}@doctoapp.ujkz'
         : email;
+
+    // 1. Créer le compte dans Supabase Auth
     try {
       await _supabase.auth.signUp(
         email: emailAuth,
@@ -146,19 +150,26 @@ class AdminService {
       );
     } catch (_) {}
 
-    final response = await _supabase.from('utilisateurs').insert({
+    // 2. Construction du payload
+    final Map<String, dynamic> payload = {
       'nom': nom,
       'prenom': prenom,
       'email': emailAuth,
       'ine': ine,
       'role': role,
-      'telephone': telephone,
       'actif': true,
-      'ecole_doctorale': ecoleDoctorale,
-      'grade': grade,
-      'specialite': specialite,
-      'domaines_expertise': domainesExpertise,
-    }).select().single();
+      'statut_compte': 'actif',
+    };
+
+    // Ajouter les champs optionnels
+    if (telephone != null && telephone.isNotEmpty) payload['telephone'] = telephone;
+    if (ecoleDoctorale != null && ecoleDoctorale.isNotEmpty) payload['ecole_doctorale'] = ecoleDoctorale;
+    if (grade != null && grade.isNotEmpty) payload['grade'] = grade;
+    if (specialite != null && specialite.isNotEmpty) payload['specialite'] = specialite;
+    if (domainesExpertise != null && domainesExpertise.isNotEmpty) payload['domaines_expertise'] = domainesExpertise;
+
+    // 3. Insérer dans la table utilisateurs
+    final response = await _supabase.from('utilisateurs').insert(payload).select().single();
 
     return UtilisateurModel.fromJson(response);
   }
@@ -724,4 +735,278 @@ class AdminService {
 // ── MÉTHODE DE COMPATIBILITÉ POUR LE MATCHING ───────────────────────────
 // Si un écran appelle getRapporteursSuggeresParScore avec un paramètre
 // déjà géré via l'alias ci-dessus
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GESTION DES DOCTORANTS — NOUVELLES MÉTHODES
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── AJOUTER UN DOCTORANT (manuel) ──
+  // ── AJOUTER UN DOCTORANT (manuel) ──
+  Future<UtilisateurModel> ajouterDoctorant({
+    required String nom,
+    required String prenom,
+    required String email,
+    required String ine,
+    String? telephone,
+    String? sexe,
+    String? dateNaissance,
+    String? ecoleDoctorale,
+    String? formation,
+    String? departement,
+    String? laboratoire,
+    String? promotion,
+    int? anneeInscription,
+    String? sujetProvisoire,
+  }) async {
+    // 1. Vérifier si l'INE existe déjà
+    final existant = await _supabase
+        .from('utilisateurs')
+        .select('id')
+        .eq('ine', ine)
+        .maybeSingle();
+
+    if (existant != null) {
+      throw Exception('Un doctorant avec cet INE existe déjà.');
+    }
+
+    // 2. Vérifier si l'email existe déjà
+    final emailExistant = await _supabase
+        .from('utilisateurs')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+
+    if (emailExistant != null) {
+      throw Exception('Un utilisateur avec cet email existe déjà.');
+    }
+
+    // 3. Construction du payload avec TOUS les champs
+    final Map<String, dynamic> payload = {
+      'nom': nom,
+      'prenom': prenom,
+      'email': email,
+      'ine': ine,
+      'role': 'doctorant',
+      'actif': false,
+      'statut_compte': 'en_attente_activation',
+    };
+
+    // Ajouter les champs optionnels s'ils ne sont pas null/vides
+    if (telephone != null && telephone.isNotEmpty) payload['telephone'] = telephone;
+    if (sexe != null && sexe.isNotEmpty) payload['sexe'] = sexe;
+    if (dateNaissance != null && dateNaissance.isNotEmpty) payload['date_naissance'] = dateNaissance;
+    if (ecoleDoctorale != null && ecoleDoctorale.isNotEmpty) payload['ecole_doctorale'] = ecoleDoctorale;
+    if (formation != null && formation.isNotEmpty) payload['formation_doctorale'] = formation;
+    if (departement != null && departement.isNotEmpty) payload['departement'] = departement;
+    if (laboratoire != null && laboratoire.isNotEmpty) payload['laboratoire'] = laboratoire;
+    if (promotion != null && promotion.isNotEmpty) payload['promotion'] = promotion;
+    if (anneeInscription != null) payload['annee_inscription'] = anneeInscription;
+    if (sujetProvisoire != null && sujetProvisoire.isNotEmpty) payload['sujet_provisoire'] = sujetProvisoire;
+
+    // 4. Insérer le doctorant
+    final response = await _supabase.from('utilisateurs').insert(payload).select().single();
+
+    return UtilisateurModel.fromJson(response);
+  }
+  // ── IMPORTER DES DOCTORANTS DEPUIS EXCEL/CSV ──
+  Future<Map<String, dynamic>> importerDoctorants(List<Map<String, dynamic>> data) async {
+    int ajoutes = 0;
+    int ignores = 0;
+    List<String> erreurs = [];
+
+    for (final ligne in data) {
+      try {
+        final ine = ligne['ine']?.toString().trim() ?? '';
+        final email = ligne['email']?.toString().trim() ?? '';
+        final nom = ligne['nom']?.toString().trim() ?? '';
+        final prenom = ligne['prenom']?.toString().trim() ?? '';
+
+        // Validation des champs obligatoires
+        if (ine.isEmpty || email.isEmpty || nom.isEmpty || prenom.isEmpty) {
+          ignores++;
+          erreurs.add('Ligne ignorée : champs obligatoires manquants (INE: $ine)');
+          continue;
+        }
+
+        // Vérifier doublon INE
+        final existant = await _supabase
+            .from('utilisateurs')
+            .select('id')
+            .eq('ine', ine)
+            .maybeSingle();
+
+        if (existant != null) {
+          ignores++;
+          erreurs.add('INE $ine déjà existant');
+          continue;
+        }
+
+        // Vérifier doublon email
+        final emailExistant = await _supabase
+            .from('utilisateurs')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+
+        if (emailExistant != null) {
+          ignores++;
+          erreurs.add('Email $email déjà existant');
+          continue;
+        }
+
+        // Insérer le doctorant
+        await _supabase.from('utilisateurs').insert({
+          'nom': nom,
+          'prenom': prenom,
+          'email': email,
+          'ine': ine,
+          'role': 'doctorant',
+          'telephone': ligne['telephone']?.toString().trim(),
+          'sexe': ligne['sexe']?.toString().trim(),
+          'date_naissance': ligne['date_naissance']?.toString().trim(),
+          'ecole_doctorale': ligne['ecole_doctorale']?.toString().trim(),
+          'formation_doctorale': ligne['formation_doctorale']?.toString().trim(),
+          'departement': ligne['departement']?.toString().trim(),
+          'laboratoire': ligne['laboratoire']?.toString().trim(),
+          'promotion': ligne['promotion']?.toString().trim(),
+          'annee_inscription': ligne['annee_inscription'] != null
+              ? int.tryParse(ligne['annee_inscription'].toString())
+              : null,
+          'sujet_provisoire': ligne['sujet_provisoire']?.toString().trim(),
+          'actif': false,
+          'statut_compte': 'en_attente_activation',
+        });
+
+        ajoutes++;
+      } catch (e) {
+        ignores++;
+        erreurs.add('Erreur ligne: $e');
+      }
+    }
+
+    return {
+      'ajoutes': ajoutes,
+      'ignores': ignores,
+      'erreurs': erreurs,
+      'total': data.length,
+    };
+  }
+
+  // ── RÉCUPÉRER LES DOCTORANTS EN ATTENTE D'ACTIVATION ──
+  Future<List<UtilisateurModel>> getDoctorantsEnAttente() async {
+    final response = await _supabase
+        .from('utilisateurs')
+        .select()
+        .eq('role', 'doctorant')
+        .eq('statut_compte', 'en_attente_activation')
+        .order('nom');
+
+    return (response as List)
+        .map((e) => UtilisateurModel.fromJson(e))
+        .toList();
+  }
+
+  // ── RÉCUPÉRER LES DOCTORANTS ACTIFS ──
+  Future<List<UtilisateurModel>> getDoctorantsActifs() async {
+    final response = await _supabase
+        .from('utilisateurs')
+        .select()
+        .eq('role', 'doctorant')
+        .eq('actif', true)
+        .eq('statut_compte', 'actif')
+        .order('nom');
+
+    return (response as List)
+        .map((e) => UtilisateurModel.fromJson(e))
+        .toList();
+  }
+
+  // ── RÉCUPÉRER LES DOCTORANTS BLOQUÉS ──
+  Future<List<UtilisateurModel>> getDoctorantsBloques() async {
+    final response = await _supabase
+        .from('utilisateurs')
+        .select()
+        .eq('role', 'doctorant')
+        .eq('actif', false)
+        .neq('statut_compte', 'en_attente_activation')
+        .order('nom');
+
+    return (response as List)
+        .map((e) => UtilisateurModel.fromJson(e))
+        .toList();
+  }
+
+  // ── STATISTIQUES DES DOCTORANTS ──
+  Future<Map<String, int>> getStatsDoctorants() async {
+    try {
+      final results = await Future.wait([
+        _supabase.from('utilisateurs').select('id').eq('role', 'doctorant'),
+        _supabase.from('utilisateurs').select('id').eq('role', 'doctorant').eq('actif', true).eq('statut_compte', 'actif'),
+        _supabase.from('utilisateurs').select('id').eq('role', 'doctorant').eq('statut_compte', 'en_attente_activation'),
+        _supabase.from('utilisateurs').select('id').eq('role', 'doctorant').eq('actif', false).neq('statut_compte', 'en_attente_activation'),
+      ]);
+
+      return {
+        'total': (results[0] as List).length,
+        'actifs': (results[1] as List).length,
+        'en_attente': (results[2] as List).length,
+        'bloques': (results[3] as List).length,
+      };
+    } catch (e) {
+      return {'total': 0, 'actifs': 0, 'en_attente': 0, 'bloques': 0};
+    }
+  }
+
+  // ── ACTIVER UN DOCTORANT ──
+  Future<void> activerDoctorant(String ine) async {
+    await _supabase
+        .from('utilisateurs')
+        .update({
+      'actif': true,
+      'statut_compte': 'actif',
+      'date_activation': DateTime.now().toIso8601String(),
+    })
+        .eq('ine', ine)
+        .eq('role', 'doctorant');
+  }
+
+  // ── DÉSACTIVER UN DOCTORANT ──
+  Future<void> desactiverDoctorant(String id, {String? motif}) async {
+    await _supabase
+        .from('utilisateurs')
+        .update({
+      'actif': false,
+      'statut_compte': 'inactif',
+      'motif_desactivation': motif,
+      'date_desactivation': DateTime.now().toIso8601String(),
+    })
+        .eq('id', id)
+        .eq('role', 'doctorant');
+  }
+
+  // ── RÉACTIVER UN DOCTORANT ──
+  Future<void> reactiverDoctorant(String id) async {
+    await _supabase
+        .from('utilisateurs')
+        .update({
+      'actif': true,
+      'statut_compte': 'actif',
+      'date_reactivation': DateTime.now().toIso8601String(),
+    })
+        .eq('id', id)
+        .eq('role', 'doctorant');
+  }
+
+  // ── SUPPRIMER UN DOCTORANT (soft delete) ──
+  Future<void> supprimerDoctorant(String id) async {
+    await _supabase
+        .from('utilisateurs')
+        .update({
+      'actif': false,
+      'statut_compte': 'supprime',
+      'date_suppression': DateTime.now().toIso8601String(),
+    })
+        .eq('id', id)
+        .eq('role', 'doctorant');
+  }
 }

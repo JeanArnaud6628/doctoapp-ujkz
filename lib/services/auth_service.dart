@@ -59,29 +59,61 @@ class AuthService {
   }
 
   // Créer compte doctorant (self-service)
-  Future<bool> creerCompteDoctorant(
-      String ine, String motDePasse) async {
-    final emailAuth =
-        '${ine.toLowerCase().replaceAll(' ', '')}@doctoapp.ujkz';
+  // ── CRÉER COMPTE DOCTORANT (self-service) ──
+  // MODIFIÉ : Gère le statut "en_attente_activation"
+  Future<bool> creerCompteDoctorant(String ine, String motDePasse) async {
+    final emailAuth = '${ine.toLowerCase().replaceAll(' ', '')}@doctoapp.ujkz';
+
+    // 1. Vérifier que le doctorant existe et est en attente
+    final doctorant = await _supabase
+        .from('utilisateurs')
+        .select()
+        .eq('ine', ine)
+        .maybeSingle();
+
+    if (doctorant == null) {
+      throw Exception('INE non trouvé. Contactez l\'administration.');
+    }
+
+    if (doctorant['statut_compte'] != 'en_attente_activation') {
+      throw Exception('Ce compte n\'est pas en attente d\'activation.');
+    }
+
+    // 2. Créer le compte dans Supabase Auth
     await _supabase.auth.signUp(
       email: emailAuth,
       password: motDePasse,
     );
+
+    // 3. Mettre à jour le statut du doctorant
+    await _supabase
+        .from('utilisateurs')
+        .update({
+      'actif': true,
+      'statut_compte': 'actif',
+      'date_activation': DateTime.now().toIso8601String(),
+    })
+        .eq('ine', ine);
+
     return true;
   }
 
-  // Envoyer OTP
+  // ── ENVOYER OTP (code numérique) ──
   Future<void> envoyerOTP(String email) async {
-    await _supabase.auth.signInWithOtp(email: email);
+    // Utiliser 'email' comme type pour le Magic Link
+    await _supabase.auth.signInWithOtp(
+      email: email,
+    );
   }
 
-  // Vérifier OTP
-  Future<AuthResponse> verifierOTP(
-      String email, String token) async {
+// ── VÉRIFIER OTP (avec le token du lien) ──
+  Future<AuthResponse> verifierOTP(String email, String token) async {
+    // Le 'token' est le code à 6 chiffres que l'utilisateur a reçu
+    // Si l'utilisateur a cliqué sur le lien, il faut utiliser le token du lien
     return await _supabase.auth.verifyOTP(
       email: email,
       token: token,
-      type: OtpType.email,
+      type: OtpType.email, // ← Utiliser 'email' pour le Magic Link
     );
   }
 
